@@ -9,10 +9,7 @@ export class DbCleaner{
       'feed_readers',
       'feed_writers',
       'feeds',
-      'files',
       'likes',
-      'local_bumps',
-      'post_attachments',
       'posts',
       'users'
     ]

@@ -202,7 +202,7 @@ declare
 begin
 	insert into feeds (type, owner_id) values (101, NEW.id);
 	if not NEW.is_group then
-		insert into feeds (type, owner_id, is_public) values (101, NEW.id, false) returning id into directId;
+		insert into feeds (type, owner_id, is_public) values (102, NEW.id, false) returning id into directId;
 		insert into feed_readers (feed_id, user_id) values (directId, NEW.id);
 		
 		insert into feeds (type, owner_id) values (201, NEW.id);
@@ -428,64 +428,6 @@ CREATE SEQUENCE feeds_id_seq
 
 ALTER SEQUENCE feeds_id_seq OWNED BY feeds.id;
 
-
---
--- Name: files; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE files (
-    id integer NOT NULL,
-    uid uuid DEFAULT gen_random_uuid() NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    file_hash bytea NOT NULL,
-    size integer NOT NULL,
-    mime_type text NOT NULL,
-    media text NOT NULL,
-    has_thumbnail boolean NOT NULL,
-    meta jsonb DEFAULT '{}'::jsonb NOT NULL
-);
-
-
---
--- Name: COLUMN files.file_hash; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN files.file_hash IS 'Хэш-сумма файла, для дедубликации.';
-
-
---
--- Name: COLUMN files.media; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN files.media IS 'image, audio, other';
-
-
---
--- Name: COLUMN files.meta; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN files.meta IS 'Дополнительные параметры, в зависимости от формата: title, artist, width, height, …';
-
-
---
--- Name: files_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE files_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: files_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE files_id_seq OWNED BY files.id;
-
-
 --
 -- Name: likes; Type: TABLE; Schema: public; Owner: -
 --
@@ -516,56 +458,6 @@ CREATE SEQUENCE likes_id_seq
 
 ALTER SEQUENCE likes_id_seq OWNED BY likes.id;
 
-
---
--- Name: local_bumps; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE local_bumps (
-    post_id integer NOT NULL,
-    user_id integer NOT NULL,
-    bumped_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
---
--- Name: TABLE local_bumps; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE local_bumps IS 'Локальные бампы постов.';
-
-
---
--- Name: post_attachments; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE post_attachments (
-    post_id integer NOT NULL,
-    file_id integer NOT NULL,
-    file_name text NOT NULL,
-    ord integer NOT NULL
-);
-
-
---
--- Name: post_attachments_ord_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE post_attachments_ord_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: post_attachments_ord_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE post_attachments_ord_seq OWNED BY post_attachments.ord;
-
-
 --
 -- Name: posts; Type: TABLE; Schema: public; Owner: -
 --
@@ -576,9 +468,7 @@ CREATE TABLE posts (
     author_id integer NOT NULL,
     body text NOT NULL,
     is_public boolean DEFAULT true NOT NULL,
-    is_comments_enabled boolean DEFAULT true NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    bumped_at timestamp with time zone DEFAULT now() NOT NULL,
     feed_ids integer[] NOT NULL
 );
 
@@ -632,7 +522,6 @@ CREATE TABLE users (
     pw_hash text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     visible_private_feed_ids integer[] DEFAULT ARRAY[]::integer[] NOT NULL,
-    hidden_feed_ids integer[] DEFAULT ARRAY[]::integer[] NOT NULL,
     CONSTRAINT users_check CHECK ((is_group = (email IS NULL))),
     CONSTRAINT users_check1 CHECK ((is_group = (pw_hash IS NULL)))
 );
@@ -679,14 +568,6 @@ COMMENT ON COLUMN users.pw_hash IS 'Хэш пароля, null для групп.
 
 COMMENT ON COLUMN users.visible_private_feed_ids IS 'Приватные фиды, которые может читать пользователь.';
 
-
---
--- Name: COLUMN users.hidden_feed_ids; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN users.hidden_feed_ids IS 'Фиды, которые пользователь читать не хочет';
-
-
 --
 -- Name: users_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
@@ -731,22 +612,7 @@ ALTER TABLE ONLY feeds ALTER COLUMN id SET DEFAULT nextval('feeds_id_seq'::regcl
 -- Name: id; Type: DEFAULT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY files ALTER COLUMN id SET DEFAULT nextval('files_id_seq'::regclass);
-
-
---
--- Name: id; Type: DEFAULT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY likes ALTER COLUMN id SET DEFAULT nextval('likes_id_seq'::regclass);
-
-
---
--- Name: ord; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY post_attachments ALTER COLUMN ord SET DEFAULT nextval('post_attachments_ord_seq'::regclass);
-
 
 --
 -- Name: id; Type: DEFAULT; Schema: public; Owner: -
@@ -768,30 +634,6 @@ ALTER TABLE ONLY users ALTER COLUMN id SET DEFAULT nextval('users_id_seq'::regcl
 
 ALTER TABLE ONLY aggregates
     ADD CONSTRAINT aggregates_pkey PRIMARY KEY (id);
-
-
---
--- Name: attachments_file_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY files
-    ADD CONSTRAINT attachments_file_hash_key UNIQUE (file_hash);
-
-
---
--- Name: attachments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY files
-    ADD CONSTRAINT attachments_pkey PRIMARY KEY (id);
-
-
---
--- Name: attachments_uid_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY files
-    ADD CONSTRAINT attachments_uid_key UNIQUE (uid);
 
 
 --
@@ -849,23 +691,6 @@ ALTER TABLE ONLY feeds
 ALTER TABLE ONLY likes
     ADD CONSTRAINT likes_pkey PRIMARY KEY (id);
 
-
---
--- Name: local_bumps_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY local_bumps
-    ADD CONSTRAINT local_bumps_pkey PRIMARY KEY (post_id, user_id);
-
-
---
--- Name: post_attachments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY post_attachments
-    ADD CONSTRAINT post_attachments_pkey PRIMARY KEY (post_id, file_id);
-
-
 --
 -- Name: posts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
@@ -919,26 +744,11 @@ CREATE INDEX aggregates_feed_ids_idx ON aggregates USING gin (feed_ids);
 
 CREATE INDEX comments_created_at_idx ON comments USING btree (created_at);
 
-
---
--- Name: fki_post_attachments_file_id_fkey; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX fki_post_attachments_file_id_fkey ON post_attachments USING btree (file_id);
-
-
 --
 -- Name: likes_created_at_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX likes_created_at_idx ON likes USING btree (created_at);
-
-
---
--- Name: posts_bumped_at_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX posts_bumped_at_idx ON posts USING btree (bumped_at);
 
 
 --
@@ -967,13 +777,6 @@ CREATE INDEX posts_is_public_idx ON posts USING btree (is_public);
 --
 
 CREATE INDEX users_email_idx ON users USING btree (email);
-
-
---
--- Name: users_hidden_feed_ids_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX users_hidden_feed_ids_idx ON users USING gin (hidden_feed_ids);
 
 
 --
@@ -1126,39 +929,6 @@ ALTER TABLE ONLY likes
 
 ALTER TABLE ONLY likes
     ADD CONSTRAINT likes_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE;
-
-
---
--- Name: local_bumps_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY local_bumps
-    ADD CONSTRAINT local_bumps_post_id_fkey FOREIGN KEY (post_id) REFERENCES posts(id) ON UPDATE CASCADE ON DELETE CASCADE;
-
-
---
--- Name: local_bumps_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY local_bumps
-    ADD CONSTRAINT local_bumps_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE;
-
-
---
--- Name: post_attachments_file_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY post_attachments
-    ADD CONSTRAINT post_attachments_file_id_fkey FOREIGN KEY (file_id) REFERENCES files(id) ON UPDATE CASCADE ON DELETE CASCADE;
-
-
---
--- Name: post_attachments_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY post_attachments
-    ADD CONSTRAINT post_attachments_post_id_fkey FOREIGN KEY (post_id) REFERENCES posts(id) ON UPDATE CASCADE ON DELETE CASCADE;
-
 
 --
 -- Name: posts_author_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
