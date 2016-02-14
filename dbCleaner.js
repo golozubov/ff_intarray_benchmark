@@ -3,13 +3,7 @@ import {knex} from './db.js'
 export class DbCleaner{
   static async clean(){
     const tableNames = [
-      'aggregates',
-      'comments',
-      'feed_posts',
-      'feed_readers',
-      'feed_writers',
       'feeds',
-      'likes',
       'posts',
       'users'
     ]
