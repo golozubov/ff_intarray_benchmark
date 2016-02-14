@@ -79,6 +79,17 @@ async function app() {
   }, 0) / subscribedGroupsCount.length
 
 
+  console.time('subscribe_user_to_users')
+  promises = usersRange.map((id)=>{
+    return subscribeUserToRandomUsers(id, _.without(usersRange, id))
+  })
+  const subscribedUsersCount = await Promise.all(promises)
+  console.timeEnd('subscribe_user_to_users')
+  const averageUsersSubscribed = _.reduce(subscribedUsersCount, (res, val) => {
+      return res + val
+    }, 0) / subscribedUsersCount.length
+
+
 
 
   /*console.time('create_posts')
@@ -112,6 +123,7 @@ async function app() {
   console.log(`Likes feeds created: ${count}`)
 
   console.log(`User average subscribed to ${averageGroupsSubscribed} groups`)
+  console.log(`User average subscribed to ${averageUsersSubscribed} users`)
 
   await DbCleaner.clean()
 }
@@ -141,6 +153,22 @@ async function subscribeUserToOwnFeeds(userId){
     await addValuesToIntarrayField('users', userId, 'private_feed_ids', [feedsIds.own])
   }
   return addValuesToIntarrayField('users', userId, 'subscr_feed_ids', [feedsIds.own, feedsIds.comments, feedsIds.likes])
+}
+
+async function subscribeUserToRandomUsers(userId, userIds){
+  const subscrCount = _.random(5, 500)
+  const subscribedUsers = _.sample(userIds, subscrCount)
+  let feedIds = subscribedUsers.map((id) => {
+    return getUserFeedsIds(id)
+  }).reduce((res, val) => {
+    res.push(val.own)
+    res.push(val.comments)
+    res.push(val.likes)
+    return res
+  }, [])
+
+  await addValuesToIntarrayField('users', userId, 'subscr_feed_ids', [feedIds])
+  return subscrCount
 }
 
 async function createFeed(payload){
