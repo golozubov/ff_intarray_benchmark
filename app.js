@@ -113,19 +113,22 @@ async function createUser(){
 }
 
 async function subscribeUserToOwnFeeds(userId){
-  let ownFeedId       = userId
-  let commentsFeedId  = 11000 + userId
-  let likesFeedId     = 21000 + userId
+  let feedsIds = getUserFeedsIds(userId)
 
-  let ownFeed = (await knex('feeds').where({id: ownFeedId}))[0]
+  let ownFeed = await findFeed(feedsIds.own)
   if (!ownFeed.is_public){
-    await addValuesToIntarrayField('users', userId, 'private_feed_ids', [ownFeedId])
+    await addValuesToIntarrayField('users', userId, 'private_feed_ids', [feedsIds.own])
   }
-  return addValuesToIntarrayField('users', userId, 'subscr_feed_ids', [ownFeedId, commentsFeedId, likesFeedId])
+  return addValuesToIntarrayField('users', userId, 'subscr_feed_ids', [feedsIds.own, feedsIds.comments, feedsIds.likes])
 }
 
 async function createFeed(payload){
   return await knex('feeds').returning('id').insert(payload)
+}
+
+async function findFeed(id){
+  let res = await knex('feeds').where({id: id})
+  return res[0]
 }
 
 async function countEntries(tableName, query = {}){
@@ -138,6 +141,14 @@ function addValuesToIntarrayField(tableName, entryId, fieldName, values){
     throw new Error("values should be array")
   }
   return knex.raw(`UPDATE ${tableName} SET ${fieldName} = uniq(${fieldName} + ?) WHERE id = ?`, [values, entryId])
+}
+
+function getUserFeedsIds(userId){
+  return {
+    own:      userId,
+    comments: 11000 + userId,
+    likes:    21000 + userId
+  }
 }
 
 
