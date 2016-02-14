@@ -11,8 +11,8 @@ global.Promise.onPossiblyUnhandledRejection((e) => { throw e; });
 //let timing = {}
 
 async function app() {
-  const usersCount  = 10
-  const groupsCount = 0
+  const usersCount  = 1000
+  const groupsCount = 100
   const usersRange = _.range(1, usersCount + 1)
 
   let promises
@@ -68,6 +68,17 @@ async function app() {
   console.timeEnd('subscribe_user_to_own_feeds')
 
 
+  console.time('subscribe_user_to_groups')
+  promises = usersRange.map((id)=>{
+    return subscribeUserToRandomGroups(id, groupIds)
+  })
+  const subscribedGroupsCount = await Promise.all(promises)
+  console.timeEnd('subscribe_user_to_groups')
+  const averageGroupsSubscribed = _.reduce(subscribedGroupsCount, (res, val) => {
+    return res + val
+  }, 0) / subscribedGroupsCount.length
+
+
 
 
   /*console.time('create_posts')
@@ -100,6 +111,8 @@ async function app() {
   count = await countEntries('feeds', {type: 'likes'})
   console.log(`Likes feeds created: ${count}`)
 
+  console.log(`User average subscribed to ${averageGroupsSubscribed} groups`)
+
   await DbCleaner.clean()
 }
 
@@ -110,6 +123,14 @@ app().then(()=>{
 
 async function createUser(){
   return await knex('users').returning('id').insert({})
+}
+
+async function subscribeUserToRandomGroups(userId, groupIds){
+  const subscrCount = _.random(0, 20)
+  const subscribedGroups = _.sample(groupIds, subscrCount)
+
+  await addValuesToIntarrayField('users', userId, 'subscr_feed_ids', subscribedGroups)
+  return subscrCount
 }
 
 async function subscribeUserToOwnFeeds(userId){
