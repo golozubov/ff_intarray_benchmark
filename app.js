@@ -90,16 +90,17 @@ async function app() {
     }, 0) / subscribedUsersCount.length
 
 
-
-
-  /*console.time('create_posts')
-  promises = [...Array(usersCount).keys()].map((i)=>{
-
-
-    return createUser()
+  console.time('create_posts')
+  promises = usersRange.map((i)=>{
+    const isPublic = !isFeedPrivate(i)
+    let payload = {
+      is_public: isPublic,
+      feed_ids: [i]
+    }
+    return createPost(payload)
   })
   await Promise.all(promises)
-  console.timeEnd('create_users')*/
+  console.timeEnd('create_posts')
 
 
 
@@ -125,6 +126,9 @@ async function app() {
   console.log(`User average subscribed to ${averageGroupsSubscribed} groups`)
   console.log(`User average subscribed to ${averageUsersSubscribed} users`)
 
+  count = await countEntries('posts')
+  console.log(`Posts created: ${count}`)
+
   await DbCleaner.clean()
 }
 
@@ -134,7 +138,7 @@ app().then(()=>{
 
 
 async function createUser(){
-  return await knex('users').returning('id').insert({})
+  return knex('users').returning('id').insert({})
 }
 
 async function subscribeUserToRandomGroups(userId, groupIds){
@@ -167,17 +171,57 @@ async function subscribeUserToRandomUsers(userId, userIds){
     return res
   }, [])
 
-  await addValuesToIntarrayField('users', userId, 'subscr_feed_ids', [feedIds])
+  await addValuesToIntarrayField('users', userId, 'subscr_feed_ids', feedIds)
   return subscrCount
 }
 
 async function createFeed(payload){
-  return await knex('feeds').returning('id').insert(payload)
+  return knex('feeds').returning('id').insert(payload)
 }
 
 async function findFeed(id){
   let res = await knex('feeds').where({id: id})
   return res[0]
+}
+
+function isFeedBase(feedId){
+  return feedId >= 1 && feedId <= 1000
+}
+
+function isFeedPrivate(feedId){
+  return feedId % 10 == 0
+}
+
+function isFeedBaseAndPrivate(feedId){
+  return isFeedBase(feedId) && isFeedPrivate(feedId)
+}
+
+async function createPost(payload){
+  return knex('posts').returning('id').insert(payload)
+}
+async function _createPost(userId, groupIds){
+  const postCount = _.random(0, 5000)
+
+  _.range(0, postCount).map((i)=>{
+    let feedId = userId
+    const rand = Math.random()
+    if (rand >= 0.8){
+      feedId = _.sample(groupIds)
+    }
+    return feedId
+  }).map((feedId) => {
+    const isPublic = isFeedBaseAndPrivate(feedId)
+    return {
+      is_public: isPublic,
+      feed_ids: [feedId]
+    }
+  })
+
+  const subscribedGroups = _.sample(groupIds, postCount)
+
+  await addValuesToIntarrayField('users', userId, 'subscr_feed_ids', subscribedGroups)
+  return postCount
+
 }
 
 async function countEntries(tableName, query = {}){
