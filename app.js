@@ -8,18 +8,25 @@ import {DbCleaner} from './dbCleaner'
 global.Promise = bluebird
 global.Promise.onPossiblyUnhandledRejection((e) => { throw e; });
 
-//let timing = {}
+const USERS_COUNT = 10000
+const GROUPS_COUNT = 1000
+const POSTS_PER_USER_MIN = 0
+const POSTS_PER_USER_MAX = 5000
+const POSTS_CREATION_CHUNK = 500
+const FRIENDS_PER_USER_MIN = 5
+const FRIENDS_PER_USER_MAX = 500
+const GROUPS_PER_USER_MIN = 0
+const GROUPS_PER_USER_MAX = 20
 
 async function app() {
-  const usersCount  = 1000
-  const groupsCount = 100
-  const usersRange = _.range(1, usersCount + 1)
+  const userIdsRange  = _.range(1, USERS_COUNT + 1)
+  const groupIdsRange = _.range(1, GROUPS_COUNT + 1)
 
   let promises
 
 
   console.time('create_users')
-  promises = usersRange.map((i)=>{
+  promises = userIdsRange.map((id)=>{
     return createUser()
   })
   await Promise.all(promises)
@@ -27,8 +34,8 @@ async function app() {
 
 
   console.time('create_base_feeds')
-  promises = usersRange.map((i)=>{
-    const isPublic = (i % 10) !== 0
+  promises = userIdsRange.map((id)=>{
+    const isPublic = (id % 10) !== 0
     const payload = {type: 'base', is_public: isPublic}
     return createFeed(payload)
   })
@@ -37,7 +44,7 @@ async function app() {
 
 
   console.time('create_group_feeds')
-  promises = [...Array(groupsCount).keys()].map((i)=>{
+  promises = groupIdsRange.map((id)=>{
     return createFeed({type: 'group'})
   })
   const groupIds = await Promise.all(promises)
@@ -45,7 +52,7 @@ async function app() {
 
 
   console.time('create_comment_feeds')
-  promises = usersRange.map((i)=>{
+  promises = userIdsRange.map((id)=>{
     return createFeed({type: 'comments'})
   })
   await Promise.all(promises)
@@ -53,7 +60,7 @@ async function app() {
 
 
   console.time('create_like_feeds')
-  promises = usersRange.map((i)=>{
+  promises = userIdsRange.map((id)=>{
     return createFeed({type: 'likes'})
   })
   await Promise.all(promises)
@@ -61,15 +68,15 @@ async function app() {
 
 
   console.time('subscribe_user_to_own_feeds')
-  promises = usersRange.map((i)=>{
-    return subscribeUserToOwnFeeds(i)
+  promises = userIdsRange.map((id)=>{
+    return subscribeUserToOwnFeeds(id)
   })
   await Promise.all(promises)
   console.timeEnd('subscribe_user_to_own_feeds')
 
 
   console.time('subscribe_user_to_groups')
-  promises = usersRange.map((id)=>{
+  promises = userIdsRange.map((id)=>{
     return subscribeUserToRandomGroups(id, groupIds)
   })
   const subscribedGroupsCount = await Promise.all(promises)
@@ -80,8 +87,8 @@ async function app() {
 
 
   console.time('subscribe_user_to_users')
-  promises = usersRange.map((id)=>{
-    return subscribeUserToRandomUsers(id, _.without(usersRange, id))
+  promises = userIdsRange.map((id)=>{
+    return subscribeUserToRandomUsers(id, _.without(userIdsRange, id))
   })
   const subscribedUsersCount = await Promise.all(promises)
   console.timeEnd('subscribe_user_to_users')
@@ -91,7 +98,7 @@ async function app() {
 
 
   console.time('create_posts')
-  promises = usersRange.map((id)=>{
+  promises = userIdsRange.map((id)=>{
     return createPosts(id, groupIds)
   })
   const postsPerUserCount = await Promise.all(promises)
@@ -142,7 +149,7 @@ async function createUser(){
 }
 
 async function subscribeUserToRandomGroups(userId, groupIds){
-  const subscrCount = _.random(0, 20)
+  const subscrCount = _.random(GROUPS_PER_USER_MIN, GROUPS_PER_USER_MAX)
   const subscribedGroups = _.sample(groupIds, subscrCount)
 
   await addValuesToIntarrayField('users', userId, 'subscr_feed_ids', subscribedGroups)
@@ -160,7 +167,7 @@ async function subscribeUserToOwnFeeds(userId){
 }
 
 async function subscribeUserToRandomUsers(userId, userIds){
-  const subscrCount = _.random(5, 500)
+  const subscrCount = _.random(FRIENDS_PER_USER_MIN, FRIENDS_PER_USER_MAX)
   const subscribedUsers = _.sample(userIds, subscrCount)
   let feedIds = subscribedUsers.map((id) => {
     return getUserFeedsIds(id)
@@ -185,7 +192,7 @@ async function findFeed(id){
 }
 
 function isFeedBase(feedId){
-  return feedId >= 1 && feedId <= 1000
+  return feedId >= 1 && feedId <= USERS_COUNT
 }
 
 function isFeedPrivate(feedId){
@@ -201,8 +208,8 @@ async function createPost(payload){
 }
 
 async function createPosts(userId, groupIds){
-  const postCount = _.random(0, 5000)
-  const chunkSize = 500
+  const postCount = _.random(POSTS_PER_USER_MIN, POSTS_PER_USER_MAX)
+  const chunkSize = POSTS_CREATION_CHUNK
 
   for (let i = 0; i < postCount; i += chunkSize) {
     let payloads = []
@@ -243,10 +250,12 @@ function addValuesToIntarrayField(tableName, entryId, fieldName, values){
 }
 
 function getUserFeedsIds(userId){
+  const commentsFeedIdsRangeStart = USERS_COUNT + GROUPS_COUNT
+  const likesFeedIdsRangeStart    = commentsFeedIdsRangeStart + USERS_COUNT
   return {
     own:      userId,
-    comments: 11000 + userId,
-    likes:    21000 + userId
+    comments: commentsFeedIdsRangeStart + userId,
+    likes:    likesFeedIdsRangeStart + userId
   }
 }
 
