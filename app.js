@@ -91,16 +91,14 @@ async function app() {
 
 
   console.time('create_posts')
-  promises = usersRange.map((i)=>{
-    const isPublic = !isFeedPrivate(i)
-    let payload = {
-      is_public: isPublic,
-      feed_ids: [i]
-    }
-    return createPost(payload)
+  promises = usersRange.map((id)=>{
+    return createPosts(id, groupIds)
   })
-  await Promise.all(promises)
+  const postsPerUserCount = await Promise.all(promises)
   console.timeEnd('create_posts')
+  const averagePostsCount = _.reduce(postsPerUserCount, (res, val) => {
+    return res + val
+  }, 0) / postsPerUserCount.length
 
 
 
@@ -128,6 +126,8 @@ async function app() {
 
   count = await countEntries('posts')
   console.log(`Posts created: ${count}`)
+
+  console.log(`User average created ${averagePostsCount} posts`)
 
   await DbCleaner.clean()
 }
@@ -199,29 +199,35 @@ function isFeedBaseAndPrivate(feedId){
 async function createPost(payload){
   return knex('posts').returning('id').insert(payload)
 }
-async function _createPost(userId, groupIds){
+
+async function createPosts(userId, groupIds){
   const postCount = _.random(0, 5000)
+  const chunkSize = 500
 
-  _.range(0, postCount).map((i)=>{
-    let feedId = userId
-    const rand = Math.random()
-    if (rand >= 0.8){
-      feedId = _.sample(groupIds)
+  for (let i = 0; i < postCount; i += chunkSize) {
+    let payloads = []
+    for (let j = 0; j < chunkSize; j += 1) {
+      payloads.push(createPostPayload(userId, groupIds))
     }
-    return feedId
-  }).map((feedId) => {
-    const isPublic = isFeedBaseAndPrivate(feedId)
-    return {
-      is_public: isPublic,
-      feed_ids: [feedId]
-    }
-  })
+    await createPost(payloads)
+  }
 
-  const subscribedGroups = _.sample(groupIds, postCount)
-
-  await addValuesToIntarrayField('users', userId, 'subscr_feed_ids', subscribedGroups)
   return postCount
+}
 
+function createPostPayload(userId, groupIds){
+  let feedId = userId
+  const rand = Math.random()
+
+  if (rand >= 0.8){
+    feedId = _.sample(groupIds)
+  }
+
+  const isPublic = isFeedBaseAndPrivate(feedId)
+  return {
+    is_public: isPublic,
+    feed_ids: [feedId]
+  }
 }
 
 async function countEntries(tableName, query = {}){
