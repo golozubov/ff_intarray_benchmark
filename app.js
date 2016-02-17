@@ -17,6 +17,9 @@ const FRIENDS_PER_USER_MIN = 5
 const FRIENDS_PER_USER_MAX = 500
 const GROUPS_PER_USER_MIN = 0
 const GROUPS_PER_USER_MAX = 20
+const POST_LIKES_MIN = 0
+const POST_LIKES_MAX = 50
+const POST_LIKES_CHUNK = 50
 
 async function app() {
   const userIdsRange  = _.range(1, USERS_COUNT + 1)
@@ -109,6 +112,9 @@ async function app() {
 
 
   let postsCount = await countEntries('posts')
+  console.time('like_and_comment_posts')
+  const averageLikesPerPost = await likePostsRandomly(postsCount)
+  console.timeEnd('like_and_comment_posts')
 
   let count
   count = await countEntries('users')
@@ -135,6 +141,8 @@ async function app() {
   console.log(`Posts created: ${postsCount}`)
 
   console.log(`User average created ${averagePostsCount} posts`)
+
+  console.log(`Post have average ${averageLikesPerPost} likes`)
 
   await DbCleaner.clean()
 }
@@ -246,6 +254,56 @@ async function createPosts(userId, groupIds){
   }
 
   return postCount
+}
+
+async function likePostsRandomly(postsCount){
+  let chunkSize = POST_LIKES_CHUNK
+  let likesPerPostCount = []
+
+
+  for (let i = 1; i <= postsCount; i += chunkSize) {
+    console.log(`Processing posts #${i} - ${i + chunkSize}`)
+    let promises = []
+    for (let j = 0; j < chunkSize; j += 1) {
+      const postId = i + j
+      if (postId > postsCount) continue
+      promises.push(likePostRandomly(postId))
+    }
+    let res = await Promise.all(promises)
+    likesPerPostCount.push(res)
+  }
+
+  likesPerPostCount = _.flatten(likesPerPostCount)
+
+  const averageLikesPerPost = _.reduce(likesPerPostCount, (res, val) => {
+    return res + val
+  }, 0) / likesPerPostCount.length
+
+
+  return averageLikesPerPost
+}
+
+async function likePostRandomly(postId){
+  let likesCount    = _.random(POST_LIKES_MIN, POST_LIKES_MAX)
+  const post = await findPost(postId)
+  console.log(postId)
+  console.log(post)
+  const ownerFeedId = post.feed_ids[0]
+  if (isFeedBase(ownerFeedId)){
+    const userId = ownerFeedId
+    await likePost(userId, postId)
+    likesCount -= 1
+  }
+
+  let subscribersIds = await getFeedSubscribersIds(ownerFeedId)
+  subscribersIds = _.sample(subscribersIds, likesCount)
+  let promises = subscribersIds.map((id)=>{
+    likePost(id, postId)
+  })
+
+  await Promise.all(promises)
+
+  return likesCount
 }
 
 function createPostPayload(userId, groupIds){
