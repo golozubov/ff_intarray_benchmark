@@ -188,7 +188,8 @@ async function subscribeUserToRandomUsers(userId, userIds){
 }
 
 async function getFeedSubscribersIds(feedId){
-  return knex.raw(`SELECT id FROM users WHERE users.subscr_feed_ids @> '{${feedId}}'`)
+  let res = await knex.raw(`SELECT id FROM users WHERE users.subscr_feed_ids @> '{${feedId}}'`)
+  return res.rows.map((r)=>{return r.id})
 }
 
 async function likePost(userId, postId){
