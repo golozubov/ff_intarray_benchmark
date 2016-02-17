@@ -20,6 +20,8 @@ const GROUPS_PER_USER_MAX = 20
 const POST_LIKES_MIN = 0
 const POST_LIKES_MAX = 50
 const POST_LIKES_CHUNK = 1000
+const POST_COMMENTS_MIN = 0
+const POST_COMMENTS_MAX = 50
 
 async function app() {
   const userIdsRange  = _.range(1, USERS_COUNT + 1)
@@ -113,8 +115,10 @@ async function app() {
 
   let postsCount = await countEntries('posts')
   console.time('like_and_comment_posts')
-  const averageLikesPerPost = await likePostsRandomly(postsCount, userIdsRange)
+  const [averageLikesPerPost, averageCommentsPerPost] = await likeAndCommentPostsRandomly(postsCount, userIdsRange)
   console.timeEnd('like_and_comment_posts')
+
+
 
   let count
   count = await countEntries('users')
@@ -143,6 +147,8 @@ async function app() {
   console.log(`User average created ${averagePostsCount} posts`)
 
   console.log(`Post have average ${averageLikesPerPost} likes`)
+
+  console.log(`Post have average ${averageCommentsPerPost} likes`)
 
   await DbCleaner.clean()
 }
@@ -256,15 +262,17 @@ async function createPosts(userId, groupIds){
   return postCount
 }
 
-async function likePostsRandomly(postsCount, userIdsRange){
-  let chunkSize = POST_LIKES_CHUNK
+async function likeAndCommentPostsRandomly(postsCount, userIdsRange){
+  const chunkSize = POST_LIKES_CHUNK
   let postsLikesCount = 0
-
-  let promises = []
-    , userIds
+    , postsCommentsCount = 0
+    , promises = []
+    , likedUserIds
+    , commentedUserIds
     , likesCount
+    , commentsCount
+
   for (let i = 1; i <= postsCount; i += chunkSize) {
-    //console.log(`Processing posts #${i} - ${i + chunkSize}`)
     process.stdout.write('.')
     promises = []
     for (let j = 0; j < chunkSize; j += 1) {
@@ -273,19 +281,26 @@ async function likePostsRandomly(postsCount, userIdsRange){
       if (postId > postsCount) continue
 
       likesCount = _.random(POST_LIKES_MIN, POST_LIKES_MAX)
-      userIds = _.sample(userIdsRange, likesCount)
-      promises.push(usersLikedPost(postId, userIds))
+      commentsCount = _.random(POST_COMMENTS_MIN, POST_COMMENTS_MAX)
+      likedUserIds = _.sample(userIdsRange, likesCount)
+      commentedUserIds = _.sample(userIdsRange, commentsCount)
+      promises.push(usersLikedAndCommentedPost(postId, likedUserIds, commentedUserIds))
       postsLikesCount += likesCount
+      postsCommentsCount += commentsCount
     }
     await Promise.all(promises)
   }
 
   const averageLikesPerPost = postsLikesCount / postsCount
-  return averageLikesPerPost
+  const averageCommentsPerPost = postsCommentsCount / postsCount
+  console.log()
+  return [averageLikesPerPost, averageCommentsPerPost]
 }
 
-async function usersLikedPost(postId, userIds){
-  let feedIds = userIds.map((userId)=>{ return getUserLikesFeedId(userId)})
+async function usersLikedAndCommentedPost(postId, likedUserIds, commentedUserIds){
+  let likesFeedIds = likedUserIds.map((userId)=>{ return getUserLikesFeedId(userId)})
+  let commentsFeedIds = commentedUserIds.map((userId)=>{ return getUserCommentsFeedId(userId)})
+  let feedIds = likesFeedIds.concat(commentsFeedIds)
   return addValuesToIntarrayField('posts', postId, 'feed_ids', feedIds)
 }
 
