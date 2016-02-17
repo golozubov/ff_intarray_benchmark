@@ -108,6 +108,7 @@ async function app() {
   }, 0) / postsPerUserCount.length
 
 
+  let postsCount = await countEntries('posts')
 
   let count
   count = await countEntries('users')
@@ -131,8 +132,7 @@ async function app() {
   console.log(`User average subscribed to ${averageGroupsSubscribed} groups`)
   console.log(`User average subscribed to ${averageUsersSubscribed} users`)
 
-  count = await countEntries('posts')
-  console.log(`Posts created: ${count}`)
+  console.log(`Posts created: ${postsCount}`)
 
   console.log(`User average created ${averagePostsCount} posts`)
 
@@ -146,6 +146,11 @@ app().then(()=>{
 
 async function createUser(){
   return knex('users').returning('id').insert({})
+}
+
+async function findUser(id){
+  let res = await knex('users').where({id: id})
+  return res[0]
 }
 
 async function subscribeUserToRandomGroups(userId, groupIds){
@@ -182,6 +187,21 @@ async function subscribeUserToRandomUsers(userId, userIds){
   return subscrCount
 }
 
+async function getFeedSubscribersIds(feedId){
+  return knex.raw(`SELECT id FROM users WHERE users.subscr_feed_ids @> '{${feedId}}'`)
+}
+
+async function likePost(userId, postId){
+  const feeds = getUserFeedsIds(userId)
+  return addValuesToIntarrayField('posts', postId, 'feed_ids', [feeds.likes])
+}
+
+async function commentPost(userId, postId){
+  const feeds = getUserFeedsIds(userId)
+  return addValuesToIntarrayField('posts', postId, 'feed_ids', [feeds.comments])
+}
+
+
 async function createFeed(payload){
   return knex('feeds').returning('id').insert(payload)
 }
@@ -205,6 +225,11 @@ function isFeedBaseAndPrivate(feedId){
 
 async function createPost(payload){
   return knex('posts').returning('id').insert(payload)
+}
+
+async function findPost(id){
+  let res = await knex('posts').where({id: id})
+  return res[0]
 }
 
 async function createPosts(userId, groupIds){
