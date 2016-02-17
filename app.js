@@ -19,7 +19,7 @@ const GROUPS_PER_USER_MIN = 0
 const GROUPS_PER_USER_MAX = 20
 const POST_LIKES_MIN = 0
 const POST_LIKES_MAX = 50
-const POST_LIKES_CHUNK = 50
+const POST_LIKES_CHUNK = 1000
 
 async function app() {
   const userIdsRange  = _.range(1, USERS_COUNT + 1)
@@ -113,7 +113,7 @@ async function app() {
 
   let postsCount = await countEntries('posts')
   console.time('like_and_comment_posts')
-  const averageLikesPerPost = await likePostsRandomly(postsCount)
+  const averageLikesPerPost = await likePostsRandomly(postsCount, userIdsRange)
   console.timeEnd('like_and_comment_posts')
 
   let count
@@ -201,13 +201,13 @@ async function getFeedSubscribersIds(feedId){
 }
 
 async function likePost(userId, postId){
-  const feeds = getUserFeedsIds(userId)
-  return addValuesToIntarrayField('posts', postId, 'feed_ids', [feeds.likes])
+  const likesFeedId = getUserLikesFeedId(userId)
+  return addValuesToIntarrayField('posts', postId, 'feed_ids', [likesFeedId])
 }
 
 async function commentPost(userId, postId){
-  const feeds = getUserFeedsIds(userId)
-  return addValuesToIntarrayField('posts', postId, 'feed_ids', [feeds.comments])
+  const commentsFeedId = getUserCommentsFeedId(userId)
+  return addValuesToIntarrayField('posts', postId, 'feed_ids', [commentsFeedId])
 }
 
 
@@ -256,54 +256,37 @@ async function createPosts(userId, groupIds){
   return postCount
 }
 
-async function likePostsRandomly(postsCount){
+async function likePostsRandomly(postsCount, userIdsRange){
   let chunkSize = POST_LIKES_CHUNK
-  let likesPerPostCount = []
+  let postsLikesCount = 0
 
-
+  let promises = []
+    , userIds
+    , likesCount
   for (let i = 1; i <= postsCount; i += chunkSize) {
-    console.log(`Processing posts #${i} - ${i + chunkSize}`)
-    let promises = []
+    //console.log(`Processing posts #${i} - ${i + chunkSize}`)
+    process.stdout.write('.')
+    promises = []
     for (let j = 0; j < chunkSize; j += 1) {
       const postId = i + j
+
       if (postId > postsCount) continue
-      promises.push(likePostRandomly(postId))
+
+      likesCount = _.random(POST_LIKES_MIN, POST_LIKES_MAX)
+      userIds = _.sample(userIdsRange, likesCount)
+      promises.push(usersLikedPost(postId, userIds))
+      postsLikesCount += likesCount
     }
-    let res = await Promise.all(promises)
-    likesPerPostCount.push(res)
+    await Promise.all(promises)
   }
 
-  likesPerPostCount = _.flatten(likesPerPostCount)
-
-  const averageLikesPerPost = _.reduce(likesPerPostCount, (res, val) => {
-    return res + val
-  }, 0) / likesPerPostCount.length
-
-
+  const averageLikesPerPost = postsLikesCount / postsCount
   return averageLikesPerPost
 }
 
-async function likePostRandomly(postId){
-  let likesCount    = _.random(POST_LIKES_MIN, POST_LIKES_MAX)
-  const post = await findPost(postId)
-  console.log(postId)
-  console.log(post)
-  const ownerFeedId = post.feed_ids[0]
-  if (isFeedBase(ownerFeedId)){
-    const userId = ownerFeedId
-    await likePost(userId, postId)
-    likesCount -= 1
-  }
-
-  let subscribersIds = await getFeedSubscribersIds(ownerFeedId)
-  subscribersIds = _.sample(subscribersIds, likesCount)
-  let promises = subscribersIds.map((id)=>{
-    likePost(id, postId)
-  })
-
-  await Promise.all(promises)
-
-  return likesCount
+async function usersLikedPost(postId, userIds){
+  let feedIds = userIds.map((userId)=>{ return getUserLikesFeedId(userId)})
+  return addValuesToIntarrayField('posts', postId, 'feed_ids', feedIds)
 }
 
 function createPostPayload(userId, groupIds){
@@ -334,13 +317,18 @@ function addValuesToIntarrayField(tableName, entryId, fieldName, values){
 }
 
 function getUserFeedsIds(userId){
-  const commentsFeedIdsRangeStart = USERS_COUNT + GROUPS_COUNT
-  const likesFeedIdsRangeStart    = commentsFeedIdsRangeStart + USERS_COUNT
   return {
     own:      userId,
-    comments: commentsFeedIdsRangeStart + userId,
-    likes:    likesFeedIdsRangeStart + userId
+    comments: getUserCommentsFeedId(userId),
+    likes:    getUserLikesFeedId(userId)
   }
 }
 
+function getUserLikesFeedId(userId){
+  return USERS_COUNT + GROUPS_COUNT + USERS_COUNT + userId
+}
+
+function getUserCommentsFeedId(userId){
+  return USERS_COUNT + GROUPS_COUNT + userId
+}
 
