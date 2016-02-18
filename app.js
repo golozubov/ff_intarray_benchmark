@@ -11,17 +11,17 @@ global.Promise.onPossiblyUnhandledRejection((e) => { throw e; });
 const USERS_COUNT = 10000
 const GROUPS_COUNT = 1000
 const POSTS_PER_USER_MIN = 0
-const POSTS_PER_USER_MAX = 5000
-const POSTS_CREATION_CHUNK = 500
+const POSTS_PER_USER_MAX = 2000
+const POSTS_CREATION_CHUNK = 5
 const FRIENDS_PER_USER_MIN = 5
 const FRIENDS_PER_USER_MAX = 500
 const GROUPS_PER_USER_MIN = 0
 const GROUPS_PER_USER_MAX = 20
 const POST_LIKES_MIN = 0
 const POST_LIKES_MAX = 50
-const POST_LIKES_CHUNK = 1000
 const POST_COMMENTS_MIN = 0
 const POST_COMMENTS_MAX = 50
+let globalPostsCount = 0
 let globalLikesCount = 0
 let globalCommentsCount = 0
 const userIdsRange  = _.range(1, USERS_COUNT + 1)
@@ -104,17 +104,11 @@ async function app() {
 
 
   console.time('create_posts')
-  promises = userIdsRange.map((id)=>{
-    return createUserPosts(id)
-  })
-  const postsPerUserCount = await Promise.all(promises)
+  await createPosts(userIdsRange)
   console.timeEnd('create_posts')
-  const averagePostsCount = _.reduce(postsPerUserCount, (res, val) => {
-    return res + val
-  }, 0) / postsPerUserCount.length
-
 
   let postsCount = await countEntries('posts')
+  const averagePostsCount = globalPostsCount / USERS_COUNT
   const averageLikesPerPost = globalLikesCount / postsCount
   const averageCommentsPerPost = globalCommentsCount / postsCount
 
@@ -148,7 +142,7 @@ async function app() {
 
   console.log(`Post have average ${averageLikesPerPost} likes`)
 
-  console.log(`Post have average ${averageCommentsPerPost} likes`)
+  console.log(`Post have average ${averageCommentsPerPost} comments`)
 
   await DbCleaner.clean()
 }
@@ -247,21 +241,32 @@ async function findPost(id){
   return res[0]
 }
 
+async function createPosts(userIdsRange){
+  let chunks = _.chunk(userIdsRange, POSTS_CREATION_CHUNK)
+  let promises = []
+  for (let i = 0; i < chunks.length; i += 1){
+    process.stdout.write('.')
+    let chunk = chunks[i]
+    promises = chunk.map((userId)=>{
+      return createUserPosts(userId)
+    })
+
+    await Promise.all(promises)
+  }
+  console.log()
+  return true
+}
+
 async function createUserPosts(userId){
   const postCount = _.random(POSTS_PER_USER_MIN, POSTS_PER_USER_MAX)
-  const chunkSize = POSTS_CREATION_CHUNK
+  globalPostsCount += postCount
 
-  let payloads
-  for (let i = 0; i < postCount; i += chunkSize) {
-    process.stdout.write('.')
-    payloads = []
-    for (let j = 0; j < chunkSize; j += 1) {
-      payloads.push(createPostPayload(userId))
-    }
-    await createPost(payloads)
+  let payloads = []
+  for (let i = 0; i < postCount; i += 1) {
+    payloads.push(createPostPayload(userId))
   }
 
-  return postCount
+  return createPost(payloads)
 }
 
 function createPostPayload(userId){
@@ -279,10 +284,17 @@ function createPostPayload(userId){
   let commentsCount = _.random(POST_COMMENTS_MIN, POST_COMMENTS_MAX)
   globalLikesCount += likesCount
   globalCommentsCount += commentsCount
-  let likedUserIds = _.sample(userIdsRange, likesCount)
-  let commentedUserIds = _.sample(userIdsRange, commentsCount)
-  let likesFeedIds = likedUserIds.map((userId)=>{ return getUserLikesFeedId(userId)})
-  let commentsFeedIds = commentedUserIds.map((userId)=>{ return getUserCommentsFeedId(userId)})
+  let likesFeedIds = []
+  let randomUserId = null
+  for (let i = 0; i < likesCount; i += 1){
+    randomUserId = userIdsRange[Math.floor(Math.random()*userIdsRange.length)]
+    likesFeedIds[i] = getUserLikesFeedId(randomUserId)
+  }
+  let commentsFeedIds = []
+  for (let i = 0; i < commentsCount; i += 1){
+    randomUserId = userIdsRange[Math.floor(Math.random()*userIdsRange.length)]
+    commentsFeedIds[i] = getUserCommentsFeedId(randomUserId)
+  }
   feedIds = _.union(feedIds, likesFeedIds)
   feedIds = _.union(feedIds, commentsFeedIds)
 
