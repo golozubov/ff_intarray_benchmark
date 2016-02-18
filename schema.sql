@@ -122,9 +122,9 @@ ALTER TABLE ONLY posts
 ALTER TABLE ONLY users
     ADD CONSTRAINT users_pkey PRIMARY KEY (id);
 
-CREATE INDEX posts_feed_ids_idx ON posts USING gin (feed_ids);
-CREATE INDEX posts_is_public_idx ON posts USING btree (is_public);
-CREATE INDEX users_private_feed_ids_idx ON users USING gin (private_feed_ids);
+--CREATE INDEX posts_feed_ids_idx ON posts USING gin (feed_ids);
+--CREATE INDEX posts_is_public_idx ON posts USING btree (is_public);
+--CREATE INDEX users_private_feed_ids_idx ON users USING gin (private_feed_ids);
 
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
 REVOKE ALL ON SCHEMA public FROM vagrant;
