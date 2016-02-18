@@ -144,6 +144,10 @@ async function app() {
 
   console.log(`Post have average ${averageCommentsPerPost} comments`)
 
+  console.time('create_indexes')
+  await createDbIndexes()
+  console.timeEnd('create_indexes')
+
   await DbCleaner.clean()
 }
 
@@ -332,3 +336,16 @@ function getUserCommentsFeedId(userId){
   return USERS_COUNT + GROUPS_COUNT + userId
 }
 
+
+async function createDbIndexes(){
+  //TODO: pg9.5, IF NOT EXISTS
+  let promises = [
+    knex.raw("CREATE INDEX posts_feed_ids_idx ON posts USING gin (feed_ids)"),
+    knex.raw("CREATE INDEX posts_is_public_idx ON posts USING btree (is_public)"),
+    knex.raw("CREATE INDEX users_private_feed_ids_idx ON users USING gin (private_feed_ids)"),
+    knex.raw("CREATE INDEX users_subscr_feed_ids_idx ON users USING gin (subscr_feed_ids)"),
+    knex.raw("CREATE INDEX feeds_is_public_idx ON feeds USING btree (is_public)"),
+    knex.raw("CREATE INDEX feeds_type_idx ON feeds USING btree (type)")
+  ]
+  return Promise.all(promises)
+}
