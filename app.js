@@ -22,11 +22,12 @@ const POST_LIKES_MAX = 50
 const POST_LIKES_CHUNK = 1000
 const POST_COMMENTS_MIN = 0
 const POST_COMMENTS_MAX = 50
+let globalLikesCount = 0
+let globalCommentsCount = 0
+const userIdsRange  = _.range(1, USERS_COUNT + 1)
+const groupIdsRange = _.range(1, GROUPS_COUNT + 1)
 
 async function app() {
-  const userIdsRange  = _.range(1, USERS_COUNT + 1)
-  const groupIdsRange = _.range(1, GROUPS_COUNT + 1)
-
   let promises
 
 
@@ -104,7 +105,7 @@ async function app() {
 
   console.time('create_posts')
   promises = userIdsRange.map((id)=>{
-    return createPosts(id, groupIds)
+    return createUserPosts(id)
   })
   const postsPerUserCount = await Promise.all(promises)
   console.timeEnd('create_posts')
@@ -114,9 +115,8 @@ async function app() {
 
 
   let postsCount = await countEntries('posts')
-  console.time('like_and_comment_posts')
-  const [averageLikesPerPost, averageCommentsPerPost] = await likeAndCommentPostsRandomly(postsCount, userIdsRange)
-  console.timeEnd('like_and_comment_posts')
+  const averageLikesPerPost = globalLikesCount / postsCount
+  const averageCommentsPerPost = globalCommentsCount / postsCount
 
 
 
@@ -239,7 +239,7 @@ function isFeedBaseAndPrivate(feedId){
 }
 
 async function createPost(payload){
-  return knex('posts').returning('id').insert(payload)
+  return knex('posts').insert(payload)
 }
 
 async function findPost(id){
@@ -247,14 +247,16 @@ async function findPost(id){
   return res[0]
 }
 
-async function createPosts(userId, groupIds){
+async function createUserPosts(userId){
   const postCount = _.random(POSTS_PER_USER_MIN, POSTS_PER_USER_MAX)
   const chunkSize = POSTS_CREATION_CHUNK
 
+  let payloads
   for (let i = 0; i < postCount; i += chunkSize) {
-    let payloads = []
+    process.stdout.write('.')
+    payloads = []
     for (let j = 0; j < chunkSize; j += 1) {
-      payloads.push(createPostPayload(userId, groupIds))
+      payloads.push(createPostPayload(userId))
     }
     await createPost(payloads)
   }
@@ -262,60 +264,31 @@ async function createPosts(userId, groupIds){
   return postCount
 }
 
-async function likeAndCommentPostsRandomly(postsCount, userIdsRange){
-  const chunkSize = POST_LIKES_CHUNK
-  let postsLikesCount = 0
-    , postsCommentsCount = 0
-    , promises = []
-    , likedUserIds
-    , commentedUserIds
-    , likesCount
-    , commentsCount
-
-  for (let i = 1; i <= postsCount; i += chunkSize) {
-    process.stdout.write('.')
-    promises = []
-    for (let j = 0; j < chunkSize; j += 1) {
-      const postId = i + j
-
-      if (postId > postsCount) continue
-
-      likesCount = _.random(POST_LIKES_MIN, POST_LIKES_MAX)
-      commentsCount = _.random(POST_COMMENTS_MIN, POST_COMMENTS_MAX)
-      likedUserIds = _.sample(userIdsRange, likesCount)
-      commentedUserIds = _.sample(userIdsRange, commentsCount)
-      promises.push(usersLikedAndCommentedPost(postId, likedUserIds, commentedUserIds))
-      postsLikesCount += likesCount
-      postsCommentsCount += commentsCount
-    }
-    await Promise.all(promises)
-  }
-
-  const averageLikesPerPost = postsLikesCount / postsCount
-  const averageCommentsPerPost = postsCommentsCount / postsCount
-  console.log()
-  return [averageLikesPerPost, averageCommentsPerPost]
-}
-
-async function usersLikedAndCommentedPost(postId, likedUserIds, commentedUserIds){
-  let likesFeedIds = likedUserIds.map((userId)=>{ return getUserLikesFeedId(userId)})
-  let commentsFeedIds = commentedUserIds.map((userId)=>{ return getUserCommentsFeedId(userId)})
-  let feedIds = likesFeedIds.concat(commentsFeedIds)
-  return addValuesToIntarrayField('posts', postId, 'feed_ids', feedIds)
-}
-
-function createPostPayload(userId, groupIds){
+function createPostPayload(userId){
   let feedId = userId
   const rand = Math.random()
 
   if (rand >= 0.8){
-    feedId = _.sample(groupIds)[0]
+    feedId = _.sample(groupIdsRange)[0]
   }
 
   const isPublic = isFeedBaseAndPrivate(feedId)
+  let feedIds = [feedId]
+
+  let likesCount = _.random(POST_LIKES_MIN, POST_LIKES_MAX)
+  let commentsCount = _.random(POST_COMMENTS_MIN, POST_COMMENTS_MAX)
+  globalLikesCount += likesCount
+  globalCommentsCount += commentsCount
+  let likedUserIds = _.sample(userIdsRange, likesCount)
+  let commentedUserIds = _.sample(userIdsRange, commentsCount)
+  let likesFeedIds = likedUserIds.map((userId)=>{ return getUserLikesFeedId(userId)})
+  let commentsFeedIds = commentedUserIds.map((userId)=>{ return getUserCommentsFeedId(userId)})
+  feedIds = _.union(feedIds, likesFeedIds)
+  feedIds = _.union(feedIds, commentsFeedIds)
+
   return {
     is_public: isPublic,
-    feed_ids: [feedId]
+    feed_ids: feedIds
   }
 }
 
