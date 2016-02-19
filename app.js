@@ -278,7 +278,7 @@ function createPostPayload(userId){
   const rand = Math.random()
 
   if (rand >= 0.8){
-    feedId = _.sample(groupIdsRange)[0]
+    feedId = _.sample(groupIdsRange)
   }
 
   const isPublic = isFeedBaseAndPrivate(feedId)
