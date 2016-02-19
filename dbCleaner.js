@@ -22,7 +22,7 @@ export class DbCleaner{
       return knex.raw(`truncate ${name} restart identity cascade`)
     })
 
-    promises.concat(indexNames.map((name)=>{
+    promises = promises.concat(indexNames.map((name)=>{
       return knex.raw(`DROP INDEX IF EXISTS ${name}`)
     }))
 
