@@ -30,6 +30,7 @@ const groupIdsRange = _.range(1, GROUPS_COUNT + 1)
 async function app() {
   let promises
 
+  await DbCleaner.clean()
 
   console.time('create_users')
   promises = userIdsRange.map((id)=>{
@@ -148,7 +149,13 @@ async function app() {
   await createDbIndexes()
   console.timeEnd('create_indexes')
 
-  await DbCleaner.clean()
+  console.log("Getting home feeds")
+  console.time('get_home_feeds')
+  console.log(await getUserHomeFeeds(userIdsRange))
+  console.timeEnd('get_home_feeds')
+
+
+  //await DbCleaner.clean()
 }
 
 app().then(()=>{
@@ -163,6 +170,66 @@ async function createUser(){
 async function findUser(id){
   let res = await knex('users').where({id: id})
   return res[0]
+}
+
+async function getUserHomeFeeds(userIdsRange){
+  process.stdout.write('.')
+  let userId = userIdsRange[0]
+  let [minTime, minPosts, minSubscrFeeds] = await getUserHomeFeed(userId)
+  let [maxTime, maxPosts, maxSubscrFeeds] = [minTime, minPosts, minSubscrFeeds]
+  for (let i = 1; i < 100; i += 1){
+    process.stdout.write('.')
+    let userId = userIdsRange[i]
+    let [time, postCount, subscribedFeedsCount]= await getUserHomeFeed(userId)
+
+    if (time[0] >= maxTime[0] && time[1] >= maxTime[1]){
+      maxTime = time
+    }
+
+    if (time[0] <= minTime[0] && time[1] <= minTime[1]){
+      minTime = time
+    }
+
+    if (postCount > maxPosts){
+      maxPosts = postCount
+    }
+
+    if (postCount < minPosts){
+      minPosts = postCount
+    }
+
+    if (subscribedFeedsCount > maxSubscrFeeds){
+      maxSubscrFeeds = subscribedFeedsCount
+    }
+
+    if (subscribedFeedsCount < minSubscrFeeds){
+      minSubscrFeeds = subscribedFeedsCount
+    }
+  }
+  console.log()
+  return {
+    time: {
+      min: minTime,
+      max: maxTime
+    },
+    posts: {
+      min: minPosts,
+      max: maxPosts
+    },
+    feeds: {
+      min: minSubscrFeeds,
+      max: maxSubscrFeeds
+    }
+  }
+}
+
+async function getUserHomeFeed(userId){
+  const start = process.hrtime()
+  const user = await findUser(userId)
+  const feedIds = user.subscr_feed_ids
+  const entries = await getPostsByFeedIds(feedIds)
+  const finish = process.hrtime(start)
+  return [finish, entries.length, feedIds.length]
 }
 
 async function subscribeUserToRandomGroups(userId, groupIds){
@@ -245,6 +312,10 @@ async function findPost(id){
   return res[0]
 }
 
+async function getPostsByFeedIds(feedIds){
+  return knex('posts').distinct('id', 'is_public').whereRaw('feed_ids && ?', [feedIds])
+}
+
 async function createPosts(userIdsRange){
   let chunks = _.chunk(userIdsRange, POSTS_CREATION_CHUNK)
   let promises = []
@@ -281,7 +352,7 @@ function createPostPayload(userId){
     feedId = _.sample(groupIdsRange)
   }
 
-  const isPublic = isFeedBaseAndPrivate(feedId)
+  const isPublic = !isFeedBaseAndPrivate(feedId)
   let feedIds = [feedId]
 
   let likesCount = _.random(POST_LIKES_MIN, POST_LIKES_MAX)
