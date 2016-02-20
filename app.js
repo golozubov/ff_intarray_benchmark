@@ -11,10 +11,10 @@ global.Promise.onPossiblyUnhandledRejection((e) => { throw e; });
 const USERS_COUNT = 10000
 const GROUPS_COUNT = 1000
 const POSTS_PER_USER_MIN = 0
-const POSTS_PER_USER_MAX = 2000
+const POSTS_PER_USER_MAX = 500
 const POSTS_CREATION_CHUNK = 5
 const FRIENDS_PER_USER_MIN = 5
-const FRIENDS_PER_USER_MAX = 500
+const FRIENDS_PER_USER_MAX = 20
 const GROUPS_PER_USER_MIN = 0
 const GROUPS_PER_USER_MAX = 20
 const POST_LIKES_MIN = 0
@@ -177,7 +177,7 @@ async function getUserHomeFeeds(userIdsRange){
   let userId = userIdsRange[0]
   let [minTime, minPosts, minSubscrFeeds] = await getUserHomeFeed(userId)
   let [maxTime, maxPosts, maxSubscrFeeds] = [minTime, minPosts, minSubscrFeeds]
-  for (let i = 1; i < 100; i += 1){
+  for (let i = 1; i < userIdsRange.length; i += 1){
     process.stdout.write('.')
     let userId = userIdsRange[i]
     let [time, postCount, subscribedFeedsCount]= await getUserHomeFeed(userId)
