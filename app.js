@@ -8,10 +8,10 @@ import {DbCleaner} from './dbCleaner'
 global.Promise = bluebird
 global.Promise.onPossiblyUnhandledRejection((e) => { throw e; });
 
-const USERS_COUNT = 10000
+const USERS_COUNT = 1000
 const GROUPS_COUNT = 1000
 const POSTS_PER_USER_MIN = 0
-const POSTS_PER_USER_MAX = 5000
+const POSTS_PER_USER_MAX = 2000
 const POSTS_CREATION_CHUNK = 5
 const FRIENDS_PER_USER_MIN = 5
 const FRIENDS_PER_USER_MAX = 500
@@ -22,11 +22,13 @@ const POST_LIKES_MAX = 50
 const POST_COMMENTS_MIN = 0
 const POST_COMMENTS_MAX = 50
 const HOME_FEED_POSTS_LIMIT = 1000
+const HOME_FEED_POSTS_FROM_DATE = '2016-01-01'
 let globalPostsCount = 0
 let globalLikesCount = 0
 let globalCommentsCount = 0
 const userIdsRange  = _.range(1, USERS_COUNT + 1)
 const groupIdsRange = _.range(1, GROUPS_COUNT + 1)
+const testedHomeFeedsCount = 10
 
 async function app() {
   let promises
@@ -179,9 +181,9 @@ async function getUserHomeFeeds(userIdsRange){
   let userId = userIdsRange[0]
   let [minTime, minPosts, minSubscrFeeds] = await getUserHomeFeed(userId)
   let [maxTime, maxPosts, maxSubscrFeeds] = [minTime, minPosts, minSubscrFeeds]
-  for (let i = 1; i < userIdsRange.length; i += 1){
+  for (let i = 1; i < testedHomeFeedsCount; i += 1){
     process.stdout.write('.')
-    let userId = userIdsRange[i]
+    let userId = userIdsRange[_.random(0, userIdsRange.length)]
     let [time, postCount, subscribedFeedsCount]= await getUserHomeFeed(userId)
 
     if (time[0] >= maxTime[0] && time[1] >= maxTime[1]){
@@ -315,7 +317,8 @@ async function findPost(id){
 }
 
 async function getPostsByFeedIds(feedIds){
-  return knex('posts').distinct('id', 'is_public', 'created_at').orderBy('created_at', 'desc').limit(HOME_FEED_POSTS_LIMIT).whereRaw('feed_ids && ?', [feedIds])
+  const d = new Date(Date.parse(HOME_FEED_POSTS_FROM_DATE))
+  return knex('posts').distinct('id', 'is_public', 'created_at').orderBy('created_at', 'desc').limit(HOME_FEED_POSTS_LIMIT).whereRaw('created_at > ?  and feed_ids && ?', [d, feedIds])
 }
 
 async function createPosts(userIdsRange){
