@@ -7,13 +7,6 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: frf1; Type: COMMENT; Schema: -; Owner: -
---
-
-COMMENT ON DATABASE ff_test_1 IS 'Тестовая база для FreeFeed-а';
-
-
---
 -- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: -
 --
 
