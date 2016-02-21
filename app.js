@@ -21,6 +21,7 @@ const POST_LIKES_MIN = 0
 const POST_LIKES_MAX = 50
 const POST_COMMENTS_MIN = 0
 const POST_COMMENTS_MAX = 50
+const HOME_FEED_POSTS_LIMIT = 1000
 let globalPostsCount = 0
 let globalLikesCount = 0
 let globalCommentsCount = 0
@@ -104,6 +105,7 @@ async function app() {
     }, 0) / subscribedUsersCount.length
 
 
+  console.log("Creating posts")
   console.time('create_posts')
   await createPosts(userIdsRange)
   console.timeEnd('create_posts')
@@ -313,7 +315,7 @@ async function findPost(id){
 }
 
 async function getPostsByFeedIds(feedIds){
-  return knex('posts').distinct('id', 'is_public').whereRaw('feed_ids && ?', [feedIds])
+  return knex('posts').distinct('id', 'is_public', 'created_at').orderBy('created_at', 'desc').limit(HOME_FEED_POSTS_LIMIT).whereRaw('feed_ids && ?', [feedIds])
 }
 
 async function createPosts(userIdsRange){
@@ -353,6 +355,7 @@ function createPostPayload(userId){
   }
 
   const isPublic = !isFeedBaseAndPrivate(feedId)
+  const createdAt = faker.date.past()
   let feedIds = [feedId]
 
   let likesCount = _.random(POST_LIKES_MIN, POST_LIKES_MAX)
@@ -375,6 +378,7 @@ function createPostPayload(userId){
 
   return {
     is_public: isPublic,
+    created_at: createdAt,
     feed_ids: feedIds
   }
 }

@@ -68,6 +68,7 @@ ALTER SEQUENCE feeds_id_seq OWNED BY feeds.id;
 CREATE TABLE posts (
     id integer NOT NULL,
     is_public boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
     feed_ids integer[] DEFAULT ARRAY[]::integer[] NOT NULL
 );
 
