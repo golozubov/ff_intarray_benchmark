@@ -15,7 +15,9 @@ export class DbCleaner{
       "users_private_feed_ids_idx",
       "users_subscr_feed_ids_idx",
       "feeds_is_public_idx",
-      "feeds_type_idx"
+      "feeds_type_idx",
+      "feed_posts_idx",
+      "post_feeds_idx"
     ]
 
     let promises = tableNames.map((name)=>{
