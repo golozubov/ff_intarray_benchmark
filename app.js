@@ -8,13 +8,13 @@ import {DbCleaner} from './dbCleaner'
 global.Promise = bluebird
 global.Promise.onPossiblyUnhandledRejection((e) => { throw e; });
 
-const USERS_COUNT = 10000
-const GROUPS_COUNT = 1000
+const USERS_COUNT = 100
+const GROUPS_COUNT = 100
 const POSTS_PER_USER_MIN = 0
-const POSTS_PER_USER_MAX = 5000
+const POSTS_PER_USER_MAX = 200
 const POSTS_CREATION_CHUNK = 5
 const FRIENDS_PER_USER_MIN = 5
-const FRIENDS_PER_USER_MAX = 500
+const FRIENDS_PER_USER_MAX = 50
 const GROUPS_PER_USER_MIN = 0
 const GROUPS_PER_USER_MAX = 20
 const POST_LIKES_MIN = 0
@@ -28,7 +28,7 @@ let globalLikesCount = 0
 let globalCommentsCount = 0
 const userIdsRange  = _.range(1, USERS_COUNT + 1)
 const groupIdsRange = _.range(1, GROUPS_COUNT + 1)
-const testedHomeFeedsCount = userIdsRange.length -1
+const testedHomeFeedsCount = 10
 
 async function app() {
   let promises
@@ -309,7 +309,7 @@ function isFeedBaseAndPrivate(feedId){
 }
 
 async function createPost(payload){
-  return knex('posts').insert(payload)
+  return knex('posts').returning('id').insert(payload)
 }
 
 async function findPost(id){
@@ -319,7 +319,7 @@ async function findPost(id){
 
 async function getPostsByFeedIds(feedIds){
   const d = new Date(Date.parse(HOME_FEED_POSTS_FROM_DATE))
-  return knex('posts').select('id', 'is_public', 'created_at').orderBy('created_at', 'desc').limit(HOME_FEED_POSTS_LIMIT).whereRaw('created_at > ?  and feed_ids && ?', [d, feedIds])
+  return knex('posts').select('id', 'is_public', 'created_at').orderBy('created_at', 'desc').limit(HOME_FEED_POSTS_LIMIT).whereRaw(`created_at > ?  and posts.id in (select post_id from feed_posts where feed_id in (${feedIds}))`, [d])
 }
 
 async function createPosts(userIdsRange){
@@ -347,7 +347,18 @@ async function createUserPosts(userId){
     payloads.push(createPostPayload(userId))
   }
 
-  return createPost(payloads)
+  let promises = payloads.map(async (payload)=>{
+    let postId = (await createPost(payload))[0]
+    let feeds_entries = payload.feed_ids.map((feedId)=>{
+      return {
+        feed_id: feedId,
+        post_id: postId
+      }
+    })
+    return knex('feed_posts').insert(feeds_entries)
+  })
+
+  return Promise.all(promises)
 }
 
 function createPostPayload(userId){
