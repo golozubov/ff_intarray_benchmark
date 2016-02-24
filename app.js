@@ -183,7 +183,7 @@ async function getUserHomeFeeds(userIdsRange){
   let [maxTime, maxPosts, maxSubscrFeeds] = [minTime, minPosts, minSubscrFeeds]
   for (let i = 1; i < testedHomeFeedsCount; i += 1){
     process.stdout.write('.')
-    let userId = userIdsRange[_.random(0, userIdsRange.length)]
+    let userId = userIdsRange[_.random(1, userIdsRange.length - 1)]
     let [time, postCount, subscribedFeedsCount]= await getUserHomeFeed(userId)
 
     if (time[0] >= maxTime[0] && time[1] >= maxTime[1]){
@@ -233,7 +233,8 @@ async function getUserHomeFeed(userId){
   const feedIds = _.sortBy(user.subscr_feed_ids)
   const entries = await getPostsByFeedIds(feedIds)
   const finish = process.hrtime(start)
-  return [finish, entries.length, feedIds.length]
+  const finishTime = [finish[0], finish[1] * Math.pow(10, -6)]
+  return [finishTime, entries.length, feedIds.length]
 }
 
 async function subscribeUserToRandomGroups(userId, groupIds){
