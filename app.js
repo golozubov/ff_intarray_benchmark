@@ -426,7 +426,9 @@ async function createDbIndexes(){
     knex.raw("CREATE INDEX users_private_feed_ids_idx ON users USING gin (private_feed_ids)"),
     knex.raw("CREATE INDEX users_subscr_feed_ids_idx ON users USING gin (subscr_feed_ids)"),
     knex.raw("CREATE INDEX feeds_is_public_idx ON feeds USING btree (is_public)"),
-    knex.raw("CREATE INDEX feeds_type_idx ON feeds USING btree (type)")
+    knex.raw("CREATE INDEX feeds_type_idx ON feeds USING btree (type)"),
+    knex.raw("CREATE INDEX feed_posts_idx ON feed_posts USING btree (feed_id)"),
+    knex.raw("CREATE INDEX post_feeds_idx ON feed_posts USING btree (post_id)")
   ]
   return Promise.all(promises)
 }

@@ -42,6 +42,14 @@ SET default_tablespace = '';
 
 SET default_with_oids = false;
 
+CREATE TABLE feed_posts (
+    post_id integer NOT NULL,
+    feed_id integer NOT NULL
+);
+
+ALTER TABLE ONLY feed_posts
+    ADD CONSTRAINT feed_posts_pkey PRIMARY KEY (post_id, feed_id);
+
 --
 -- Name: feeds; Type: TABLE; Schema: public; Owner: -
 --
