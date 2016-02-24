@@ -8,10 +8,10 @@ import {DbCleaner} from './dbCleaner'
 global.Promise = bluebird
 global.Promise.onPossiblyUnhandledRejection((e) => { throw e; });
 
-const USERS_COUNT = 1000
+const USERS_COUNT = 10000
 const GROUPS_COUNT = 1000
 const POSTS_PER_USER_MIN = 0
-const POSTS_PER_USER_MAX = 2000
+const POSTS_PER_USER_MAX = 5000
 const POSTS_CREATION_CHUNK = 5
 const FRIENDS_PER_USER_MIN = 5
 const FRIENDS_PER_USER_MAX = 500
@@ -21,14 +21,14 @@ const POST_LIKES_MIN = 0
 const POST_LIKES_MAX = 50
 const POST_COMMENTS_MIN = 0
 const POST_COMMENTS_MAX = 50
-const HOME_FEED_POSTS_LIMIT = 1000
+const HOME_FEED_POSTS_LIMIT = 30
 const HOME_FEED_POSTS_FROM_DATE = '2016-01-01'
 let globalPostsCount = 0
 let globalLikesCount = 0
 let globalCommentsCount = 0
 const userIdsRange  = _.range(1, USERS_COUNT + 1)
 const groupIdsRange = _.range(1, GROUPS_COUNT + 1)
-const testedHomeFeedsCount = 10
+const testedHomeFeedsCount = userIdsRange.length -1
 
 async function app() {
   let promises
@@ -319,7 +319,7 @@ async function findPost(id){
 
 async function getPostsByFeedIds(feedIds){
   const d = new Date(Date.parse(HOME_FEED_POSTS_FROM_DATE))
-  return knex('posts').distinct('id', 'is_public', 'created_at').orderBy('created_at', 'desc').limit(HOME_FEED_POSTS_LIMIT).whereRaw('created_at > ?  and feed_ids && ?', [d, feedIds])
+  return knex('posts').select('id', 'is_public', 'created_at').orderBy('created_at', 'desc').limit(HOME_FEED_POSTS_LIMIT).whereRaw('created_at > ?  and feed_ids && ?', [d, feedIds])
 }
 
 async function createPosts(userIdsRange){
