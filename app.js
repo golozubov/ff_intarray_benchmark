@@ -230,7 +230,7 @@ async function getUserHomeFeeds(userIdsRange){
 async function getUserHomeFeed(userId){
   const start = process.hrtime()
   const user = await findUser(userId)
-  const feedIds = user.subscr_feed_ids
+  const feedIds = _.sortBy(user.subscr_feed_ids)
   const entries = await getPostsByFeedIds(feedIds)
   const finish = process.hrtime(start)
   return [finish, entries.length, feedIds.length]
@@ -378,6 +378,7 @@ function createPostPayload(userId){
   }
   feedIds = _.union(feedIds, likesFeedIds)
   feedIds = _.union(feedIds, commentsFeedIds)
+  feedIds = _.sortBy(feedIds)
 
   return {
     is_public: isPublic,
@@ -420,6 +421,7 @@ async function createDbIndexes(){
   let promises = [
     knex.raw("CREATE INDEX posts_feed_ids_idx ON posts USING gin (feed_ids)"),
     knex.raw("CREATE INDEX posts_is_public_idx ON posts USING btree (is_public)"),
+    knex.raw("CREATE INDEX posts_created_at_idx ON posts USING btree (created_at)"),
     knex.raw("CREATE INDEX users_private_feed_ids_idx ON users USING gin (private_feed_ids)"),
     knex.raw("CREATE INDEX users_subscr_feed_ids_idx ON users USING gin (subscr_feed_ids)"),
     knex.raw("CREATE INDEX feeds_is_public_idx ON feeds USING btree (is_public)"),
