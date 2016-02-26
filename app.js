@@ -8,13 +8,13 @@ import {DbCleaner} from './dbCleaner'
 global.Promise = bluebird
 global.Promise.onPossiblyUnhandledRejection((e) => { throw e; });
 
-const USERS_COUNT = 100
-const GROUPS_COUNT = 100
+const USERS_COUNT = 10000
+const GROUPS_COUNT = 1000
 const POSTS_PER_USER_MIN = 0
-const POSTS_PER_USER_MAX = 200
+const POSTS_PER_USER_MAX = 5000
 const POSTS_CREATION_CHUNK = 5
 const FRIENDS_PER_USER_MIN = 5
-const FRIENDS_PER_USER_MAX = 50
+const FRIENDS_PER_USER_MAX = 500
 const GROUPS_PER_USER_MIN = 0
 const GROUPS_PER_USER_MAX = 20
 const POST_LIKES_MIN = 0
@@ -29,6 +29,7 @@ let globalCommentsCount = 0
 const userIdsRange  = _.range(1, USERS_COUNT + 1)
 const groupIdsRange = _.range(1, GROUPS_COUNT + 1)
 const testedHomeFeedsCount = 10
+let feedPosts = []
 
 async function app() {
   let promises
@@ -332,7 +333,11 @@ async function createPosts(userIdsRange){
       return createUserPosts(userId)
     })
 
+    promises.push(()=>{
+      return knex('feed_posts').insert(feedPosts)
+    })
     await Promise.all(promises)
+    feedPosts = []
   }
   console.log()
   return true
@@ -342,23 +347,30 @@ async function createUserPosts(userId){
   const postCount = _.random(POSTS_PER_USER_MIN, POSTS_PER_USER_MAX)
   globalPostsCount += postCount
 
-  let payloads = []
+  let postFeeds = []
+    , postPayloads = []
   for (let i = 0; i < postCount; i += 1) {
-    payloads.push(createPostPayload(userId))
+    let payload = createPostPayload(userId)
+    postPayloads.push(_.pick(payload, ['is_public', 'created_at']))
+    postFeeds.push(payload.feed_ids)
   }
 
-  let promises = payloads.map(async (payload)=>{
-    let postId = (await createPost(payload))[0]
-    let feeds_entries = payload.feed_ids.map((feedId)=>{
-      return {
+  let postIds = await createPost(postPayloads)
+  let postId
+    , feedId
+
+  for (let i = 0; i < postIds.length; i += 1) {
+    postId = postIds[i]
+    for (let j = 0; j < postFeeds[i].length; j += 1){
+      feedId = postFeeds[i][j]
+      feedPosts.push({
         feed_id: feedId,
         post_id: postId
-      }
-    })
-    return knex('feed_posts').insert(feeds_entries)
-  })
+      })
+    }
+  }
 
-  return Promise.all(promises)
+  return true
 }
 
 function createPostPayload(userId){
