@@ -47,9 +47,6 @@ CREATE TABLE feed_posts (
     feed_id integer NOT NULL
 );
 
-ALTER TABLE ONLY feed_posts
-    ADD CONSTRAINT feed_posts_pkey PRIMARY KEY (post_id, feed_id);
-
 --
 -- Name: feeds; Type: TABLE; Schema: public; Owner: -
 --
