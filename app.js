@@ -28,7 +28,7 @@ let globalLikesCount = 0
 let globalCommentsCount = 0
 const userIdsRange  = _.range(1, USERS_COUNT + 1)
 const groupIdsRange = _.range(1, GROUPS_COUNT + 1)
-const testedHomeFeedsCount = 10
+const testedHomeFeedsCount = userIdsRange.length -1
 let feedPosts = []
 
 async function app() {
