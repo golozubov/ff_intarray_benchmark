@@ -377,20 +377,15 @@ function createPostPayload(userId){
   let commentsCount = _.random(POST_COMMENTS_MIN, POST_COMMENTS_MAX)
   globalLikesCount += likesCount
   globalCommentsCount += commentsCount
-  let likesFeedIds = []
   let randomUserId = null
   for (let i = 0; i < likesCount; i += 1){
     randomUserId = userIdsRange[Math.floor(Math.random()*userIdsRange.length)]
-    likesFeedIds[i] = getUserLikesFeedId(randomUserId)
+    feedIds.push(getUserLikesFeedId(randomUserId))
   }
-  let commentsFeedIds = []
   for (let i = 0; i < commentsCount; i += 1){
     randomUserId = userIdsRange[Math.floor(Math.random()*userIdsRange.length)]
-    commentsFeedIds[i] = getUserCommentsFeedId(randomUserId)
+    feedIds.push(getUserCommentsFeedId(randomUserId))
   }
-  feedIds = _.union(feedIds, likesFeedIds)
-  feedIds = _.union(feedIds, commentsFeedIds)
-  feedIds = _.sortBy(feedIds)
 
   return {
     is_public: isPublic,
