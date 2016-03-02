@@ -418,15 +418,14 @@ function getUserCommentsFeedId(userId){
 
 
 async function createDbIndexes(){
-  //TODO: pg9.5, IF NOT EXISTS
   let promises = [
-    knex.raw("CREATE INDEX posts_feed_ids_idx ON posts USING gin (feed_ids)"),
-    knex.raw("CREATE INDEX posts_is_public_idx ON posts USING btree (is_public)"),
-    knex.raw("CREATE INDEX posts_created_at_idx ON posts USING btree (created_at)"),
-    knex.raw("CREATE INDEX users_private_feed_ids_idx ON users USING gin (private_feed_ids)"),
-    knex.raw("CREATE INDEX users_subscr_feed_ids_idx ON users USING gin (subscr_feed_ids)"),
-    knex.raw("CREATE INDEX feeds_is_public_idx ON feeds USING btree (is_public)"),
-    knex.raw("CREATE INDEX feeds_type_idx ON feeds USING btree (type)")
+    knex.raw("CREATE INDEX IF NOT EXISTS posts_feed_ids_idx ON posts USING gin (feed_ids)"),
+    knex.raw("CREATE INDEX IF NOT EXISTS posts_is_public_idx ON posts USING btree (is_public)"),
+    knex.raw("CREATE INDEX IF NOT EXISTS posts_created_at_idx ON posts USING btree (created_at)"),
+    knex.raw("CREATE INDEX IF NOT EXISTS users_private_feed_ids_idx ON users USING gin (private_feed_ids)"),
+    knex.raw("CREATE INDEX IF NOT EXISTS users_subscr_feed_ids_idx ON users USING gin (subscr_feed_ids)"),
+    knex.raw("CREATE INDEX IF NOT EXISTS feeds_is_public_idx ON feeds USING btree (is_public)"),
+    knex.raw("CREATE INDEX IF NOT EXISTS feeds_type_idx ON feeds USING btree (type)")
   ]
   return Promise.all(promises)
 }
