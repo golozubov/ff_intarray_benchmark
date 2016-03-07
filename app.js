@@ -140,6 +140,7 @@ async function app() {
   const averagePostsCount = globalPostsCount / USERS_COUNT
   const averageLikesPerPost = globalLikesCount / postsCount
   const averageCommentsPerPost = globalCommentsCount / postsCount
+  const averageHidesPerPost = globalPostHidesCount / postsCount
 
 
 
@@ -176,6 +177,8 @@ async function app() {
   console.log(`Post have average ${averageLikesPerPost} likes`)
 
   console.log(`Post have average ${averageCommentsPerPost} comments`)
+
+  console.log(`Post average hidden by ${averageHidesPerPost} users`)
 
   console.time('create_indexes')
   await createDbIndexes()
@@ -259,7 +262,8 @@ async function getUserHomeFeed(userId){
   const start = process.hrtime()
   const user = await findUser(userId)
   const feedIds = _.sortBy(user.subscr_feed_ids)
-  const entries = await getPostsByFeedIds(feedIds)
+  const hiddenFeedIds = _.sortBy(user.hidden_feed_ids)
+  const entries = await getPostsByFeedIds(feedIds, hiddenFeedIds)
   const finish = process.hrtime(start)
   const finishTime = [finish[0], finish[1] * Math.pow(10, -6)]
   return [finishTime, entries.length, feedIds.length]
@@ -353,9 +357,9 @@ async function findPost(id){
   return res[0]
 }
 
-async function getPostsByFeedIds(feedIds){
+async function getPostsByFeedIds(feedIds, hiddenFeedIds){
   const d = new Date(Date.parse(HOME_FEED_POSTS_FROM_DATE))
-  return knex('posts').select('id', 'is_public', 'created_at').orderBy('created_at', 'desc').limit(HOME_FEED_POSTS_LIMIT).whereRaw('created_at > ?  and feed_ids && ?', [d, feedIds])
+  return knex('posts').select('id', 'is_public', 'created_at').orderBy('created_at', 'desc').limit(HOME_FEED_POSTS_LIMIT).whereRaw('created_at > ?  and feed_ids && ? and not feed_ids && ?', [d, feedIds, hiddenFeedIds])
 }
 
 async function createPosts(userIdsRange){
