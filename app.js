@@ -15,6 +15,8 @@ const POSTS_PER_USER_MAX = 5000
 const POSTS_CREATION_CHUNK = 5
 const FRIENDS_PER_USER_MIN = 5
 const FRIENDS_PER_USER_MAX = 500
+const HIDES_PER_USER_MIN = 5
+const HIDES_PER_USER_MAX = 500
 const GROUPS_PER_USER_MIN = 0
 const GROUPS_PER_USER_MAX = 20
 const POST_LIKES_MIN = 0
@@ -115,6 +117,17 @@ async function app() {
     }, 0) / subscribedUsersCount.length
 
 
+  console.time('hide_random_feeds')
+  promises = userIdsRange.map((id)=>{
+    return hideRandomFeeds(id)
+  })
+  const hiddenFeedsCount = await Promise.all(promises)
+  console.timeEnd('hide_random_feeds')
+  const averageFeedsHidden = _.reduce(hiddenFeedsCount, (res, val) => {
+      return res + val
+    }, 0) / hiddenFeedsCount.length
+
+
   console.log("Creating posts")
   console.time('create_posts')
   await createPosts(userIdsRange)
@@ -151,6 +164,7 @@ async function app() {
 
   console.log(`User average subscribed to ${averageGroupsSubscribed} groups`)
   console.log(`User average subscribed to ${averageUsersSubscribed} users`)
+  console.log(`Average feeds hidden (per user): ${averageFeedsHidden}`)
 
   console.log(`Posts created: ${postsCount}`)
 
@@ -276,6 +290,18 @@ async function subscribeUserToRandomUsers(userId, userIds){
 
   await addValuesToIntarrayField('users', userId, 'subscr_feed_ids', feedIds)
   return subscrCount
+}
+
+async function hideRandomFeeds(userId){
+  const hideCount = _.random(HIDES_PER_USER_MIN, HIDES_PER_USER_MAX)
+  let hiddenFeedsIds = []
+  for (let i = 0; i < hideCount; i+=1){
+    hiddenFeedsIds.push(_.random(3 * USERS_COUNT + GROUPS_COUNT, 4 * USERS_COUNT + GROUPS_COUNT))
+  }
+  hiddenFeedsIds = _.without(hiddenFeedsIds, userId, getUserCommentsFeedId(userId), getUserLikesFeedId(userId))
+
+  await addValuesToIntarrayField('users', userId, 'hidden_feed_ids', hiddenFeedsIds)
+  return hideCount
 }
 
 async function getFeedSubscribersIds(feedId){
