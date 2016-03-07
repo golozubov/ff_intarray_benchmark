@@ -77,6 +77,14 @@ async function app() {
   console.timeEnd('create_like_feeds')
 
 
+  console.time('create_hides_feeds')
+  promises = userIdsRange.map((id)=>{
+    return createFeed({type: 'hides'})
+  })
+  await Promise.all(promises)
+  console.timeEnd('create_hides_feeds')
+
+
   console.time('subscribe_user_to_own_feeds')
   promises = userIdsRange.map((id)=>{
     return subscribeUserToOwnFeeds(id)
@@ -137,6 +145,9 @@ async function app() {
 
   count = await countEntries('feeds', {type: 'likes'})
   console.log(`Likes feeds created: ${count}`)
+
+  count = await countEntries('feeds', {type: 'hides'})
+  console.log(`Hides feeds created: ${count}`)
 
   console.log(`User average subscribed to ${averageGroupsSubscribed} groups`)
   console.log(`User average subscribed to ${averageUsersSubscribed} users`)
@@ -248,10 +259,10 @@ async function subscribeUserToRandomGroups(userId, groupIds){
 async function subscribeUserToOwnFeeds(userId){
   let feedsIds = getUserFeedsIds(userId)
 
-  let ownFeed = await findFeed(feedsIds.own)
-  if (!ownFeed.is_public){
-    await addValuesToIntarrayField('users', userId, 'private_feed_ids', [feedsIds.own])
-  }
+  //let ownFeed = await findFeed(feedsIds.own)
+  //if (!ownFeed.is_public){
+  //  await addValuesToIntarrayField('users', userId, 'private_feed_ids', [feedsIds.own])
+  //}
   return addValuesToIntarrayField('users', userId, 'subscr_feed_ids', [feedsIds.own, feedsIds.comments, feedsIds.likes])
 }
 
@@ -404,7 +415,8 @@ function getUserFeedsIds(userId){
   return {
     own:      userId,
     comments: getUserCommentsFeedId(userId),
-    likes:    getUserLikesFeedId(userId)
+    likes:    getUserLikesFeedId(userId),
+    hides:    getUserHidesFeedId(userId)
   }
 }
 
@@ -414,6 +426,10 @@ function getUserLikesFeedId(userId){
 
 function getUserCommentsFeedId(userId){
   return USERS_COUNT + GROUPS_COUNT + userId
+}
+
+function getUserHidesFeedId(userId){
+  return USERS_COUNT + GROUPS_COUNT + USERS_COUNT + USERS_COUNT + userId
 }
 
 
