@@ -23,11 +23,14 @@ const POST_LIKES_MIN = 0
 const POST_LIKES_MAX = 50
 const POST_COMMENTS_MIN = 0
 const POST_COMMENTS_MAX = 50
+const POST_HIDES_MIN = 0
+const POST_HIDES_MAX = 50
 const HOME_FEED_POSTS_LIMIT = 30
 const HOME_FEED_POSTS_FROM_DATE = '2016-01-01'
 let globalPostsCount = 0
 let globalLikesCount = 0
 let globalCommentsCount = 0
+let globalPostHidesCount = 0
 const userIdsRange  = _.range(1, USERS_COUNT + 1)
 const groupIdsRange = _.range(1, GROUPS_COUNT + 1)
 const testedHomeFeedsCount = userIdsRange.length -1
@@ -397,8 +400,10 @@ function createPostPayload(userId){
 
   let likesCount = _.random(POST_LIKES_MIN, POST_LIKES_MAX)
   let commentsCount = _.random(POST_COMMENTS_MIN, POST_COMMENTS_MAX)
+  let hidesCount = _.random(POST_HIDES_MIN, POST_HIDES_MAX)
   globalLikesCount += likesCount
   globalCommentsCount += commentsCount
+  globalPostHidesCount += hidesCount
   let likesFeedIds = []
   let randomUserId = null
   for (let i = 0; i < likesCount; i += 1){
@@ -410,8 +415,14 @@ function createPostPayload(userId){
     randomUserId = userIdsRange[Math.floor(Math.random()*userIdsRange.length)]
     commentsFeedIds[i] = getUserCommentsFeedId(randomUserId)
   }
+  let hiddenFeedIds = []
+  for (let i = 0; i < hidesCount; i += 1){
+    randomUserId = userIdsRange[Math.floor(Math.random()*userIdsRange.length)]
+    hiddenFeedIds[i] = getUserHidesFeedId(randomUserId)
+  }
   feedIds = _.union(feedIds, likesFeedIds)
   feedIds = _.union(feedIds, commentsFeedIds)
+  feedIds = _.union(feedIds, hiddenFeedIds)
   feedIds = _.sortBy(feedIds)
 
   return {
