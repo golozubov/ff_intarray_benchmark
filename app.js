@@ -258,11 +258,7 @@ async function subscribeUserToRandomGroups(userId, groupIds){
 
 async function subscribeUserToOwnFeeds(userId){
   let feedsIds = getUserFeedsIds(userId)
-
-  //let ownFeed = await findFeed(feedsIds.own)
-  //if (!ownFeed.is_public){
-  //  await addValuesToIntarrayField('users', userId, 'private_feed_ids', [feedsIds.own])
-  //}
+  await addValuesToIntarrayField('users', userId, 'hidden_feed_ids', [feedsIds.hides])
   return addValuesToIntarrayField('users', userId, 'subscr_feed_ids', [feedsIds.own, feedsIds.comments, feedsIds.likes])
 }
 
@@ -438,7 +434,7 @@ async function createDbIndexes(){
     knex.raw("CREATE INDEX IF NOT EXISTS posts_feed_ids_idx ON posts USING gin (feed_ids)"),
     knex.raw("CREATE INDEX IF NOT EXISTS posts_is_public_idx ON posts USING btree (is_public)"),
     knex.raw("CREATE INDEX IF NOT EXISTS posts_created_at_idx ON posts USING btree (created_at)"),
-    knex.raw("CREATE INDEX IF NOT EXISTS users_private_feed_ids_idx ON users USING gin (private_feed_ids)"),
+    knex.raw("CREATE INDEX IF NOT EXISTS users_hidden_feed_ids_idx ON users USING gin (hidden_feed_ids)"),
     knex.raw("CREATE INDEX IF NOT EXISTS users_subscr_feed_ids_idx ON users USING gin (subscr_feed_ids)"),
     knex.raw("CREATE INDEX IF NOT EXISTS feeds_is_public_idx ON feeds USING btree (is_public)"),
     knex.raw("CREATE INDEX IF NOT EXISTS feeds_type_idx ON feeds USING btree (type)")

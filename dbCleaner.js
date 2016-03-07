@@ -12,7 +12,7 @@ export class DbCleaner{
       "posts_feed_ids_idx",
       "posts_is_public_idx",
       "posts_created_at_idx",
-      "users_private_feed_ids_idx",
+      "users_hidden_feed_ids_idx",
       "users_subscr_feed_ids_idx",
       "feeds_is_public_idx",
       "feeds_type_idx"

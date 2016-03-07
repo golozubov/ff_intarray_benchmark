@@ -89,7 +89,7 @@ ALTER SEQUENCE posts_id_seq OWNED BY posts.id;
 CREATE TABLE users (
     id integer NOT NULL,
     is_group boolean DEFAULT false NOT NULL,
-    private_feed_ids integer[] DEFAULT ARRAY[]::integer[] NOT NULL,
+    hidden_feed_ids integer[] DEFAULT ARRAY[]::integer[] NOT NULL,
     subscr_feed_ids integer[] DEFAULT ARRAY[]::integer[] NOT NULL
 );
 
