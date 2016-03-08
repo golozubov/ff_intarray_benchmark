@@ -408,25 +408,19 @@ function createPostPayload(userId){
   globalLikesCount += likesCount
   globalCommentsCount += commentsCount
   globalPostHidesCount += hidesCount
-  let likesFeedIds = []
   let randomUserId = null
   for (let i = 0; i < likesCount; i += 1){
     randomUserId = userIdsRange[Math.floor(Math.random()*userIdsRange.length)]
-    likesFeedIds[i] = getUserLikesFeedId(randomUserId)
+    feedIds.push(getUserLikesFeedId(randomUserId))
   }
-  let commentsFeedIds = []
   for (let i = 0; i < commentsCount; i += 1){
     randomUserId = userIdsRange[Math.floor(Math.random()*userIdsRange.length)]
-    commentsFeedIds[i] = getUserCommentsFeedId(randomUserId)
+    feedIds.push(getUserCommentsFeedId(randomUserId))
   }
-  let hiddenFeedIds = []
   for (let i = 0; i < hidesCount; i += 1){
     randomUserId = userIdsRange[Math.floor(Math.random()*userIdsRange.length)]
-    hiddenFeedIds[i] = getUserHidesFeedId(randomUserId)
+    feedIds.push(getUserHidesFeedId(randomUserId))
   }
-  feedIds = _.union(feedIds, likesFeedIds)
-  feedIds = _.union(feedIds, commentsFeedIds)
-  feedIds = _.union(feedIds, hiddenFeedIds)
   feedIds = _.sortBy(feedIds)
 
   return {
